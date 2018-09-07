@@ -1,0 +1,65 @@
+---
+title: "Course Project Practical Machine Learning"
+author: "Mathijs Haerden"
+date: "7 september 2018"
+output: html_document
+---
+  
+  ## R Markdown
+  
+```{r message=FALSE}
+library(dplyr)
+library(caret)
+library(randomForest)
+```
+
+Loading data + removing first 7 columns, which are not needed in this excersize
+```{r}
+data <- read.csv("pml-training.csv")
+data <- data[,-c(1:7)]
+```
+
+Dividing into training and test-set
+```{r }
+set.seed(234)
+inTrain = createDataPartition(data$classe, p = 3/4)[[1]]
+
+training = data[ inTrain,]
+
+testing = data[-inTrain,]
+```
+
+```{r}
+names(training)
+```
+
+By looking at the data, we see that the variables consist of x, y and z variables, which are the measurements in certain directions and a few others, which are most likely either derived or calculated variables. Selecting only columns ending with _x, _y or _z, will assure that we only use 'raw' data, that are actual  measurements. Moreover, the x, y and z variables seem to be most complete (having no missing values). Therefore I will use only these values as predictors. Let's select these variables using dplyr
+```{r}
+training <- training %>%
+select(ends_with("_x"), ends_with("_y"), ends_with("_z"), "classe")
+```
+
+With these variables I will now create a random forest:
+```{r cache=TRUE}
+set.seed(554)
+modFit <- randomForest(classe~., data=training)
+confMatrixTraining <- confusionMatrix(modFit$predicted, training$classe)
+confMatrixTraining$overall
+```
+
+As one can see above, the accuracy is rather high with a rate of almost 0.99. Let's cross validate the results in our generated test-set
+
+```{r}
+testPrediction <- predict(modFit, testing)
+confMatrixTesting <- confusionMatrix(testPrediction, testing$classe)
+confMatrixTesting$overall
+```
+
+
+Again our accuracy is high, with a rate close to 0.99. I believe this is a high enough accuracy to apply my random forest algorithm on the 20 test cases and predict their classe.
+
+```{r}
+testData <- read.csv("pml-testing.csv")
+finalPrediction <- predict(modFit, testData)
+finalPrediction
+```
